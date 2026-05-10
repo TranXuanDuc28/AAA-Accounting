@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>⚡ CYBER SOC DASHBOARD</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.1/socket.io.min.js"></script>
+
+<style>
+body{
+    background:#020617;
+    color:#00ffff;
+    font-family: monospace;
+}
+
+/* HEADER */
+h1{
+    text-align:center;
+    margin:20px;
+}
+
+/* CARDS */
+.cards{
+    display:flex;
+    gap:20px;
+    justify-content:center;
+}
+
+.card{
+    border:1px solid #00ffff;
+    padding:15px;
+    width:180px;
+    text-align:center;
+}
+
+/* COLORS */
+.ping{ color:#00e5ff; }
+.http{ color:#00ff88; }
+.scan{ color:#ff4d4d; }
+
+/* TABLE */
+table{
+    width:90%;
+    margin:20px auto;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:10px;
+    border-bottom:1px solid #00ffff;
+    text-align:center;
+}
+
+/* LEVEL */
+.low{color:#00ff88;}
+.medium{color:yellow;}
+.high{color:red;}
+
+/* BUTTON */
+button{
+    background:black;
+    color:#00ffff;
+    border:1px solid #00ffff;
+    padding:5px 10px;
+    cursor:pointer;
+}
+
+/* MODAL */
+.modal{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform: translate(-50%, -50%);
+    width:80%;
+    height:85%;
+    background:black;
+    border:2px solid #00ffff;
+    display:none;
+    overflow:auto;
+    padding:20px;
+    z-index: 1000;
+}
+
+/* LOG */
+.log-line{
+    font-size:13px;
+    margin:2px 0;
+}
+</style>
+</head>
+
+<body>
+
+<h1>⚡ CYBER SOC DASHBOARD</h1>
+
+<div class="cards">
+    <div class="card ping">PING <h2 id="ping">0</h2></div>
+    <div class="card scan">SCAN <h2 id="scan">0</h2></div>
+    <div class="card http">HTTP <h2 id="http">0</h2></div>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>User</th>
+<th>IP</th>
+<th>Online</th>
+<th>UP (MB)</th>
+<th>DOWN (MB)</th>
+<th>Ping</th>
+<th>Scan</th>
+<th>HTTP</th>
+<th>Risk</th>
+<th>Level</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody id="table"></tbody>
+</table>
+
+<!-- MODAL -->
+<div id="modal" class="modal">
+<button onclick="closeModal()">Close</button>
+
+<h3 class="ping">📡 PING</h3>
+<div id="ping_logs"></div>
+
+<h3 class="scan">🚨 SCAN</h3>
+<div id="scan_logs"></div>
+
+<h3 class="http">🌐 HTTP</h3>
+<div id="http_logs"></div>
+</div>
+
+<script>
+let socket = io();
+
+// lưu user đang xem
+let currentUser = null;
+
+
+// ===== SOCKET UPDATE =====
+socket.on("update", data => {
+
+    // update stats
+    document.getElementById("ping").innerText = data.stats.PING || 0;
+    document.getElementById("scan").innerText = data.stats.SCAN || 0;
+    document.getElementById("http").innerText = data.stats.HTTP || 0;
+
+    renderTable(data.users);
+
+    // 🔥 realtime modal
+    if(currentUser){
+        let u = data.users.find(x => x.ip === currentUser);
+        if(u){
+            renderDetail(u);
+        }
+    }
+});
+
+
+// ===== TABLE =====
+function renderTable(users){
+    let html="";
+
+    users.forEach(u=>{
+        html+=`
+        <tr>
+        <td>${u.user}</td>
+        <td>${u.ip}</td>
+        <td>${u.online}</td>
+        <td style="color:#a5f3fc">${u.upload}</td>
+        <td style="color:#f9a8d4">${u.download}</td>
+        <td class="ping">${u.ping}</td>
+        <td class="scan">${u.scan}</td>
+        <td class="http">${u.http}</td>
+        <td>${u.risk}</td>
+        <td class="${u.level.toLowerCase()}">${u.level}</td>
+        <td><button onclick='openModal(${JSON.stringify(u)})'>View</button></td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("table").innerHTML = html;
+}
+
+
+// ===== OPEN MODAL =====
+function openModal(u){
+    currentUser = u.ip;
+    document.getElementById("modal").style.display="block";
+    renderDetail(u);
+}
+
+
+// ===== CLOSE =====
+function closeModal(){
+    document.getElementById("modal").style.display="none";
+    currentUser = null;
+}
+
+
+// ===== DETAIL =====
+function renderDetail(u){
+    renderLogs("ping_logs", u.ping_logs, "ping");
+    renderLogs("scan_logs", u.scan_logs, "scan");
+    renderLogs("http_logs", u.http_logs, "http");
+}
+
+
+// ===== LOG RENDER =====
+function renderLogs(id, logs, type){
+    let container = document.getElementById(id);
+
+    let html = logs.map(l =>
+        `<div class="log-line ${type}">${l}</div>`
+    ).join("");
+
+    container.innerHTML = html;
+
+    // auto scroll
+    container.scrollTop = container.scrollHeight;
+}
+</script>
+
+</body>
+</html>
