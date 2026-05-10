@@ -27,7 +27,8 @@ Hệ thống giám sát an ninh mạng (SOC Dashboard) tích hợp xác thực v
    Đăng nhập vào MySQL (`sudo mysql -u root -p`) và chạy các lệnh:
    ```sql
    CREATE DATABASE radius;
-   CREATE USER 'radius'@'localhost' IDENTIFIED BY 'radpass';
+   -- Sử dụng mysql_native_password để đảm bảo tương thích với thư viện Python
+   CREATE USER 'radius'@'localhost' IDENTIFIED WITH mysql_native_password BY 'radpass';
    GRANT ALL PRIVILEGES ON radius.* TO 'radius'@'localhost';
    FLUSH PRIVILEGES;
    ```
