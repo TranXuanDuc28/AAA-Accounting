@@ -23,29 +23,36 @@ Hệ thống giám sát an ninh mạng (SOC Dashboard) tích hợp xác thực v
 ### 1. Cấu hình FreeRADIUS & MySQL
 Để RADIUS có thể lưu dữ liệu phiên (Accounting) vào Database:
 
-1. **Bật module SQL**:
+1. **Khởi tạo Database và User**:
+   Đăng nhập vào MySQL (`sudo mysql -u root -p`) và chạy các lệnh:
+   ```sql
+   CREATE DATABASE radius;
+   CREATE USER 'radius'@'localhost' IDENTIFIED BY 'radpass';
+   GRANT ALL PRIVILEGES ON radius.* TO 'radius'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+2. **Bật module SQL trong FreeRADIUS**:
    ```bash
    sudo ln -s /etc/freeradius/3.0/mods-available/sql /etc/freeradius/3.0/mods-enabled/
    ```
-2. **Cấu hình kết nối Database**:
-   Chỉnh sửa file `/etc/freeradius/3.0/mods-enabled/sql`, cập nhật thông tin `host`, `login`, `password`, `radius_db`.
-   sql {
-    driver = "rlm_sql_mysql"
-    dialect = "mysql"
-    
-    # Thông tin kết nối
-    server = "localhost"
-    port = 3306
-    login = "radius"
-    password = "radpass" # Mật khẩu bạn đặt cho user radius
-    radius_db = "radius"
-}
-
-3. **Kích hoạt Accounting SQL**:
-   Mở `/etc/freeradius/3.0/sites-enabled/default`, tìm phần `accounting { ... }` và bỏ comment dòng `sql`.
-4. **Khởi tạo Database**:
+3. **Cấu hình kết nối**:
+   Chỉnh sửa file `/etc/freeradius/3.0/mods-enabled/sql`, cập nhật thông tin trong khối `sql { ... }`:
+   ```conf
+    sql {
+        driver = "rlm_sql_mysql"
+        dialect = "mysql"
+        server = "localhost"
+        port = 3306
+        login = "radius"
+        password = "radpass"
+        radius_db = "radius"
+    }
+   ```
+4. **Kích hoạt Accounting SQL**:
+   Mở `/etc/freeradius/3.0/sites-enabled/default`, tìm phần `accounting { ... }` và đảm bảo có dòng `sql` (hoặc `-sql`).
+5. **Khởi tạo cấu trúc bảng (Import Schema)**:
    ```bash
-   sudo mysql -u root -p radius < /etc/freeradius/3.0/mods-config/sql/main/mysql/schema.sql
+   sudo cat /etc/freeradius/3.0/mods-config/sql/main/mysql/schema.sql | sudo mysql -u root -p radius
    ```
 
 ### 2. Cấu hình OpenVPN
